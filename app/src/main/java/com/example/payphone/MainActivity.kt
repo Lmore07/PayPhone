@@ -64,14 +64,13 @@ class MainActivity : AppCompatActivity() {
 
     fun pagar(view: View?) {
 
-        //Valores para Envio
         val numero_cel: String? = findViewById<TextView?>(R.id.phone).text.toString()
         val codigo_pais: String? = findViewById<Spinner?>(R.id.spinner).selectedItem.toString()
         val referencia: String? = findViewById<TextView?>(R.id.referencia).text.toString()
         val moneda: String? = "USD"
-        var monto:Float = findViewById<TextView?>(R.id.monto).text.toString().toFloat()
+        var monto:Float = findViewById<TextView?>(R.id.monto).text.toString().toFloat()*100
         val clientTransactionId: String? = UUID.randomUUID().toString()
-        //buscar usuario para cobrar
+
         val queue = Volley.newRequestQueue(this)
         val datos_user = object: JsonObjectRequest(GET,"https://pay.payphonetodoesposible.com/api/Users/"+numero_cel+"/region/"+codigo_pais,null,
             { response->
@@ -84,28 +83,9 @@ class MainActivity : AppCompatActivity() {
                 data.put("amount",monto?.toInt())
                 data.put("currency",moneda)
                 data.put("ClientTransactionId",clientTransactionId)
-                data.put("amountWithoutTax",monto)
+                data.put("amountWithoutTax",monto?.toInt())
+                ejecuta_cobro(data);
 
-                val cola = Volley.newRequestQueue(this)
-
-                val JsonArrayRq: JsonObjectRequest = object : JsonObjectRequest(
-                    POST,
-                    "https://pay.payphonetodoesposible.com/api/Sale",
-                    data,
-                    { respuesta ->
-                        Toast.makeText(this, respuesta.toString(),Toast.LENGTH_LONG)
-                    },
-                    { error -> Toast.makeText(this, error.toString(), Toast.LENGTH_LONG) }
-                ) {
-                    @Throws(AuthFailureError::class)
-                    override fun getHeaders(): Map<String, String> {
-                        val headers = HashMap<String, String>()
-                        headers.put("Content-Type", "application/json")
-                        headers.put("Authorization", "Bearer "+token)
-                        return headers
-                    }
-                }
-                cola.add(JsonArrayRq)
             },
             {
             }
@@ -119,5 +99,28 @@ class MainActivity : AppCompatActivity() {
             }
         }
         queue.add(datos_user)
+    }
+
+    fun ejecuta_cobro(data:JSONObject){
+
+        val cola = Volley.newRequestQueue(this)
+        val request: JsonObjectRequest = object : JsonObjectRequest(
+            POST,
+            "https://pay.payphonetodoesposible.com/api/Sale",
+            data,
+            { respuesta ->
+                Toast.makeText(this, respuesta.toString(),Toast.LENGTH_LONG).show()
+            },
+            { error -> Toast.makeText(this, "No se pudo completar", Toast.LENGTH_LONG).show() }
+        ) {
+            @Throws(AuthFailureError::class)
+            override fun getHeaders(): Map<String, String> {
+                val headers = HashMap<String, String>()
+                headers.put("Content-Type", "application/json")
+                headers.put("Authorization", "Bearer "+token)
+                return headers
+            }
+        }
+        cola.add(request)
     }
 }
